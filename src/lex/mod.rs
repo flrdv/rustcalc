@@ -9,24 +9,24 @@ pub struct Lexer<'a> {
     optree: radix::Node<Op>
 }
 
-impl Lexer<'_> {
+impl<'a> Lexer<'a> {
     pub fn new(string: &str) -> Lexer {
         Lexer {
             string,
             optree: {
                 let mut radix = radix::Node::new();
-                radix.insert("+", &Op::Add);
-                radix.insert("-", &Op::Sub);
-                radix.insert("*", &Op::Mul);
-                radix.insert("/", &Op::Div);
-                radix.insert("**", &Op::Pow);
+                radix.insert("+", Op::Add);
+                radix.insert("-", Op::Sub);
+                radix.insert("*", Op::Mul);
+                radix.insert("/", Op::Div);
+                radix.insert("**", Op::Pow);
                 radix
             }
         }
     }
 
-    pub fn lex<'a, 'b>(&'b mut self) -> Result<Vec<Token<'a>>, Error> {
-        let mut lexemes: Vec<Token<'a>> = Vec::new();
+    pub fn lex(&mut self) -> Result<Vec<Token>, Error> {
+        let mut lexemes: Vec<Token> = Vec::new();
 
         while self.string.len() > 0 {
             lexemes.push(self.lexeme()?);
@@ -35,7 +35,7 @@ impl Lexer<'_> {
         Ok(lexemes)
     }
 
-    fn lexeme<'a>(&mut self) -> Result<Token<'a>, Error> {
+    fn lexeme(&mut self) -> Result<Token, Error> {
         match self.string.chars().nth(0).unwrap() {
             '0'..='9' => self.int(),
             'a'..='z' | 'A'..='Z' | '_' => self.id(),
@@ -44,7 +44,7 @@ impl Lexer<'_> {
         }
     }
 
-    fn int<'a>(&mut self) -> Result<Token<'a>, Error> {
+    fn int(&mut self) -> Result<Token, Error> {
         for (i, ch) in self.string.chars().enumerate() {
            if !(ch >= '0' && ch <= '9') {
                return Ok(Token::Const(self.advance(i)))
@@ -54,7 +54,7 @@ impl Lexer<'_> {
         Ok(Token::Const(self.advance(self.string.len())))
     }
 
-    fn id<'a>(&mut self) -> Result<Token<'a>, Error> {
+    fn id(&mut self) -> Result<Token, Error> {
         for (i, ch) in self.string.chars().enumerate() {
             match ch {
                 'a'..='z' | 'A'..='Z' | '_' => (),
@@ -67,24 +67,35 @@ impl Lexer<'_> {
         Ok(Token::ID(self.advance(self.string.len()).to_string()))
     }
 
-    fn op<'a>(&mut self) -> Result<Token<'a>, Error> {
+    fn op(&mut self) -> Result<Token, Error> {
+        match self.find_op_end() {
+            None => Err(Error::new("encountered an incomplete operator".to_string())),
+            Some((index, op)) => {
+                self.advance(index);
+                Ok(Operator(op))
+            }
+        }
+    }
+
+    fn find_op_end(&self) -> Option<(usize, Op)> {
         let mut cursor = self.optree.cursor();
 
-        for (i, ch) in self.string.chars().enumerate().skip(1) {
+        for (i, ch) in self.string.chars().enumerate() {
             if !cursor.visit(ch) {
-                self.advance(i);
-                if let Some(op) = cursor.payload() {
-                    return Ok(Operator(op))
-                }
-
-                return Err(Error::new("invalid operator".to_string()))
+                return match cursor.payload() {
+                    None => None,
+                    Some(op) => Some((i, op))
+                };
             }
         }
 
-        Err(Error::new("encountered an incomplete operator".to_string()))
+        match cursor.payload() {
+            None => None,
+            Some(op) => Some((self.string.len(), op))
+        }
     }
 
-    fn unknown<'a>(&mut self) -> Token<'a> {
+    fn unknown(&mut self) -> Token {
         match self.string.find('\n') {
             None => Unknown(self.advance(self.string.len())),
             Some(pos) => Unknown(self.advance(pos))
@@ -99,14 +110,14 @@ impl Lexer<'_> {
 }
 
 #[derive(Debug)]
-pub enum Token<'a> {
+pub enum Token {
     Unknown(String),
-    Operator(&'a Op),
+    Operator(Op),
     Const(String),
     ID(String)
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum Op {
     Add,
     Sub,
