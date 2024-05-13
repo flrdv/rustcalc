@@ -2,7 +2,7 @@ mod error;
 mod radix;
 
 use error::Error;
-use crate::lex::Token::{Operator, Unknown};
+use crate::lex::Token::{LParen, Operator, RParen, Unknown};
 
 pub struct Lexer<'a> {
     string: &'a str,
@@ -40,8 +40,20 @@ impl<'a> Lexer<'a> {
             '0'..='9' => self.int(),
             'a'..='z' | 'A'..='Z' | '_' => self.id(),
             '+' | '-' | '*' | '/' => self.op(),
+            '(' => Ok(self.lparen()),
+            ')' => Ok(self.rparen()),
             _ => Ok(self.unknown())
         }
+    }
+
+    fn lparen(&mut self) -> Token {
+        self.advance(1);
+        LParen
+    }
+
+    fn rparen(&mut self) -> Token {
+        self.advance(1);
+        RParen
     }
 
     fn int(&mut self) -> Result<Token, Error> {
@@ -114,7 +126,9 @@ pub enum Token {
     Unknown(String),
     Operator(Op),
     Const(String),
-    ID(String)
+    ID(String),
+    LParen,
+    RParen
 }
 
 #[derive(Debug, Copy, Clone)]
