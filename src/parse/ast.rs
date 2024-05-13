@@ -1,10 +1,13 @@
+#[derive(Debug)]
 pub enum Node {
     UnOp(Unary, Box<Node>),
     BinOp(Binary, Box<Node>, Box<Node>),
     Const(i64),
     Id(String),
+    Call(String)
 }
 
+#[derive(Debug)]
 pub enum Binary {
     Add,
     Sub,
@@ -13,6 +16,7 @@ pub enum Binary {
     Pow
 }
 
+#[derive(Debug)]
 pub enum Unary {
     Pos,
     Neg
