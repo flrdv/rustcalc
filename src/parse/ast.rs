@@ -2,7 +2,7 @@
 pub enum Node {
     UnOp(Unary, Box<Node>),
     BinOp(Binary, Box<Node>, Box<Node>),
-    Const(i64),
+    Const(f64),
     Id(String),
     Call(String)
 }
