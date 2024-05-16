@@ -1,23 +1,52 @@
+use std::collections::HashMap;
+use std::io;
+use std::io::BufRead;
 use std::ops::Deref;
+use crate::eval::Evaluator;
+use crate::lex::error::Error;
+use crate::parse::stream::Stream;
 
 mod lex;
 mod parse;
+mod eval;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let expr = String::from("(1+2)**3");
-    let mut lexer = lex::Lexer::new(expr.deref());
-    let lexemes = lexer.lex();
-    // for lexeme in &lexemes.unwrap() {
-    //     println!("lexeme: {lexeme:?}")
-    // }
+fn repl() {
+    const PROMPT: &str = "> ";
+    print!("{}", PROMPT);
 
-    let stream = parse::stream::Stream::new(lexemes.unwrap());
-    let mut parser = parse::Parser::new(stream);
-    let branches = parser.parse();
+    for line in io::stdin().lock().lines() {
+        match exec(line.unwrap().as_str()) {
+            Ok(results) => {
+                for result in results {
+                    println!("{result}")
+                }
+            },
+            Err(err) => println!("error: {err}")
+        };
 
-    for node in branches {
-        println!("{:?}", node)
+        print!("{}", PROMPT)
+    }
+}
+
+fn exec(data: &str) -> Result<Vec<f64>, Error> {
+    let mut lexer = lex::Lexer::new(data);
+    let lexemes = lexer.lex()?;
+    let mut parser = parse::Parser::new(Stream::new(lexemes));
+    let eval = Evaluator::new(HashMap::from([
+        ("pi".to_string(), std::f64::consts::PI),
+    ]));
+    let mut results = Vec::new();
+
+    for branch in parser.parse() {
+        results.push(eval.evaluate(&branch)?)
     }
 
-    Ok(())
+    Ok(results)
+}
+
+fn main() {
+    for result in exec("pi").unwrap() {
+        println!("{result}")
+    }
+    // repl()
 }
