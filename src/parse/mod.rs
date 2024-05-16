@@ -1,9 +1,8 @@
 pub mod ast;
 pub mod stream;
 
-use std::ops::Deref;
-use crate::lex;
 use crate::lex::{Op, Token};
+use crate::lex::Token::RParen;
 use crate::parse::ast::Node::{BinOp, UnOp};
 use crate::parse::ast::{Binary, Node, Unary};
 use crate::parse::stream::Stream;
@@ -33,10 +32,10 @@ impl<'a> Parser {
         loop {
             match self.stream.pop().unwrap() {
                 Token::Operator(Op::Add) => {
-                    expr = BinOp(Binary::Mul, Box::new(expr), Box::new(self.expr()))
+                    expr = BinOp(Binary::Add, Box::new(expr), Box::new(self.expr()))
                 }
                 Token::Operator(Op::Sub) => {
-                    expr = BinOp(Binary::Div, Box::new(expr), Box::new(self.expr()))
+                    expr = BinOp(Binary::Sub, Box::new(expr), Box::new(self.expr()))
                 }
                 _ => {
                     self.stream.back();
@@ -68,8 +67,8 @@ impl<'a> Parser {
     fn exp(&mut self) -> Node {
         let term = self.term();
 
-        match self.stream.pop().unwrap() {
-            Token::Operator(Op::Pow) => {
+        match self.stream.pop() {
+            Some(Token::Operator(Op::Pow)) => {
                 BinOp(Binary::Pow, Box::new(term), Box::new(self.exp()))
             },
             _ => {
@@ -81,12 +80,16 @@ impl<'a> Parser {
     
     fn term(&mut self) -> Node {
         let factor = self.factor();
-        if let Node::Id(name) = &factor  {
-            if let Token::LParen = self.stream.pop().unwrap() {
-                return Node::Call(name.clone())
-            }
+        if let Node::Id(name) = &factor {
+            match self.stream.preview() {
+                Some(Token::LParen) => {
+                    // parse arguments here
+                    self.stream.pop(); // fixme: check if it's closing parenthesis
 
-            self.stream.back()
+                    return Node::Call(name.clone())
+                },
+                _ => ()
+            }
         }
 
         factor
@@ -95,19 +98,27 @@ impl<'a> Parser {
     fn factor(&mut self) -> Node {
         match self.stream.pop().unwrap() {
             Token::Const(literal) => {
-                Node::Const(literal.parse::<i64>().unwrap())
+                Node::Const(literal.parse::<f64>().unwrap())
             },
             Token::ID(literal) => {
                 Node::Id(literal.clone())
             },
-            Token::LParen => self.stmt(),
+            Token::LParen => {
+                let stmt = self.stmt();
+                match self.stream.pop().unwrap() {
+                    RParen => stmt,
+                    _ => panic!("expected closing parenthesis")
+                }
+            },
             Token::Operator(Op::Add) => {
-                UnOp(Unary::Pos, Box::new(self.factor()))
+                UnOp(Unary::Pos, Box::new(self.exp()))
             },
             Token::Operator(Op::Sub) => {
-                UnOp(Unary::Neg, Box::new(self.factor()))
+                UnOp(Unary::Neg, Box::new(self.exp()))
             },
-            _ => panic!("unexpected lexeme")  // do we really need this? Why not just return what we've got?
+            _ => {
+                panic!("unexpected lexeme: {:?}", self.stream.previous())
+            }
         }
     }
 }

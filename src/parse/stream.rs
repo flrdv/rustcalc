@@ -20,6 +20,22 @@ impl<T> Stream<T> {
         Some(&self.items[self.position-1])
     }
 
+    pub fn preview(&self) -> Option<&T> {
+        if self.position >= self.items.len() {
+            return None
+        }
+
+        Some(&self.items[self.position])
+    }
+
+    pub fn previous(&self) -> Option<&T> {
+        if self.position > 0 {
+            return Some(&self.items[self.position-1])
+        }
+
+        Some(&self.items[0])
+    }
+
     pub fn back(&mut self) {
         if self.position > 0 {
             self.position -= 1
@@ -27,15 +43,11 @@ impl<T> Stream<T> {
     }
 
     pub fn len(&self) -> usize {
-        self.items.len() - self.position
+        self.items.len() - self.position - 1
     }
 
     pub fn empty(&self) -> bool {
         self.len() == 0
-    }
-
-    pub fn iter(&self) -> core::slice::Iter<T> {
-        self.items.iter()
     }
 }
 
