@@ -13,12 +13,13 @@ fn exec(data: &str) -> Result<Vec<f64>, Error> {
     let mut lexer = lex::Lexer::new(data);
     let lexemes = lexer.lex()?;
     let mut parser = parse::Parser::new(Stream::new(lexemes));
-    let mut eval = Evaluator::new()
+    let eval = Evaluator::new()
         .names(HashMap::from([
             ("pi".to_string(), std::f64::consts::PI),
         ]))
         .functions(HashMap::from([
-            ("five".to_string(), Box::new(|| 5f64) as _),
+            ("five".to_string(), Box::new(|_: Vec<f64>| 5f64) as _),
+            ("sum".to_string(), Box::new(|args: Vec<f64>| args.iter().sum()) as _)
         ]));
     let mut results = Vec::new();
 

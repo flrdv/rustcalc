@@ -4,7 +4,7 @@ pub enum Node {
     BinOp(Binary, Box<Node>, Box<Node>),
     Const(f64),
     Id(String),
-    Call(String)
+    Call(String, Vec<Node>)
 }
 
 #[derive(Debug)]

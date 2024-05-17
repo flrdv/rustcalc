@@ -1,8 +1,9 @@
 pub mod ast;
 pub mod stream;
 
+use std::cmp::PartialEq;
 use crate::lex::{Op, Token};
-use crate::lex::Token::RParen;
+use crate::lex::Token::{RParen, Comma};
 use crate::parse::ast::Node::{BinOp, UnOp};
 use crate::parse::ast::{Binary, Node, Unary};
 use crate::parse::stream::Stream;
@@ -87,20 +88,32 @@ impl<'a> Parser {
     
     fn term(&mut self) -> Node {
         let factor = self.factor();
+
         if let Node::Id(name) = &factor {
             match self.stream.preview() {
                 Some(Token::LParen) => {
-                    // parse arguments here
                     self.stream.pop(); // lparen
-                    self.stream.pop(); // rparen; fixme: check if it's closing parenthesis
-
-                    return Node::Call(name.clone())
+                    return Node::Call(name.clone(), self.fcall_args())
                 },
                 _ => ()
             }
         }
 
         factor
+    }
+
+    fn fcall_args(&mut self) -> Vec<Node> {
+        let mut args = Vec::new();
+
+        while *self.stream.preview().unwrap() != RParen {
+            args.push(self.stmt());
+            if let Some(Comma) = self.stream.preview() {
+                self.stream.pop();
+            }
+        }
+
+        self.stream.pop();
+        args
     }
 
     fn factor(&mut self) -> Node {

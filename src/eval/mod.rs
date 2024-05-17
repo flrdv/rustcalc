@@ -5,7 +5,7 @@ use crate::parse::ast::Node::{UnOp, BinOp};
 
 pub struct Evaluator {
     vars: HashMap<String, f64>,
-    fns: HashMap<String, Box<dyn Fn() -> f64>>
+    fns: HashMap<String, Box<dyn Fn(Vec<f64>) -> f64>>
 }
 
 impl Evaluator {
@@ -21,7 +21,7 @@ impl Evaluator {
         self
     }
 
-    pub fn functions(mut self, fns: HashMap<String, Box<dyn Fn() -> f64>>) -> Self {
+    pub fn functions(mut self, fns: HashMap<String, Box<dyn Fn(Vec<f64>) -> f64>>) -> Self {
         self.fns = fns;
         self
     }
@@ -44,13 +44,22 @@ impl Evaluator {
 
                 Err(Error::new("name not found".to_string()))
             },
-            Node::Call(name) => {
-                if let Some(fun) = self.fns.get(name) {
-                    return Ok(fun())
+            Node::Call(name, args) => {
+                match self.fns.get(name) {
+                    Some(fun) => Ok(fun(self.evalute_args(args)?)),
+                    None => Err(Error::new("function not found".to_string()))
                 }
-
-                Err(Error::new("function not found".to_string()))
             },
         }
+    }
+
+    fn evalute_args(&self, args: &Vec<Node>) -> Result<Vec<f64>, Error> {
+        let mut results = Vec::new();
+
+        for arg in args {
+            results.push(self.evaluate(arg)?)
+        }
+
+        Ok(results)
     }
 }
