@@ -35,7 +35,6 @@ impl Evaluator {
             BinOp(Binary::Mul, left, right) => Ok(self.evaluate(left)? * self.evaluate(right)?),
             BinOp(Binary::Div, left, right) => Ok(self.evaluate(left)? / self.evaluate(right)?),
             BinOp(Binary::Pow, left, right) => Ok(self.evaluate(left)?.powf(self.evaluate(right)?)),
-
             Node::Const(num) => Ok(*num),
             Node::Id(name) => {
                 if let Some(value) = self.vars.get(name) {
