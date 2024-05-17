@@ -30,12 +30,15 @@ impl<'a> Parser {
         let mut expr = self.expr();
 
         loop {
-            match self.stream.pop().unwrap() {
-                Token::Operator(Op::Add) => {
+            match self.stream.pop() {
+                Some(Token::Operator(Op::Add)) => {
                     expr = BinOp(Binary::Add, Box::new(expr), Box::new(self.expr()))
                 }
-                Token::Operator(Op::Sub) => {
+                Some(Token::Operator(Op::Sub)) => {
                     expr = BinOp(Binary::Sub, Box::new(expr), Box::new(self.expr()))
+                }
+                None => {
+                    return expr
                 }
                 _ => {
                     self.stream.back();
@@ -49,13 +52,16 @@ impl<'a> Parser {
         let mut exp = self.exp();
 
         loop {
-            match self.stream.pop().unwrap() {
-                Token::Operator(Op::Mul) => {
+            match self.stream.pop() {
+                Some(Token::Operator(Op::Mul)) => {
                     exp = BinOp(Binary::Mul, Box::new(exp), Box::new(self.exp()))
-                }
-                Token::Operator(Op::Div) => {
+                },
+                Some(Token::Operator(Op::Div)) => {
                     exp = BinOp(Binary::Div, Box::new(exp), Box::new(self.exp()))
-                }
+                },
+                None => {
+                    return exp
+                },
                 _ => {
                     self.stream.back();
                     return exp
@@ -71,6 +77,7 @@ impl<'a> Parser {
             Some(Token::Operator(Op::Pow)) => {
                 BinOp(Binary::Pow, Box::new(term), Box::new(self.exp()))
             },
+            None => term,
             _ => {
                 self.stream.back();
                 term
@@ -84,7 +91,8 @@ impl<'a> Parser {
             match self.stream.preview() {
                 Some(Token::LParen) => {
                     // parse arguments here
-                    self.stream.pop(); // fixme: check if it's closing parenthesis
+                    self.stream.pop(); // lparen
+                    self.stream.pop(); // rparen; fixme: check if it's closing parenthesis
 
                     return Node::Call(name.clone())
                 },
@@ -96,7 +104,8 @@ impl<'a> Parser {
     }
 
     fn factor(&mut self) -> Node {
-        match self.stream.pop().unwrap() {
+        let token = self.stream.pop().unwrap();
+        match token {
             Token::Const(literal) => {
                 Node::Const(literal.parse::<f64>().unwrap())
             },
@@ -117,7 +126,7 @@ impl<'a> Parser {
                 UnOp(Unary::Neg, Box::new(self.exp()))
             },
             _ => {
-                panic!("unexpected lexeme: {:?}", self.stream.previous())
+                panic!("unexpected lexeme: {:?}", token)
             }
         }
     }

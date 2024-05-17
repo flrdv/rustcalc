@@ -12,7 +12,7 @@ impl<T> Stream<T> {
     }
 
     pub fn pop(&mut self) -> Option<&T> {
-        if self.position >= self.items.len() {
+        if self.len() == 0 {
             return None
         }
 
@@ -21,19 +21,11 @@ impl<T> Stream<T> {
     }
 
     pub fn preview(&self) -> Option<&T> {
-        if self.position >= self.items.len() {
+        if self.len() == 0 {
             return None
         }
 
         Some(&self.items[self.position])
-    }
-
-    pub fn previous(&self) -> Option<&T> {
-        if self.position > 0 {
-            return Some(&self.items[self.position-1])
-        }
-
-        Some(&self.items[0])
     }
 
     pub fn back(&mut self) {
@@ -43,7 +35,7 @@ impl<T> Stream<T> {
     }
 
     pub fn len(&self) -> usize {
-        self.items.len() - self.position - 1
+        self.items.len() - self.position
     }
 
     pub fn empty(&self) -> bool {
