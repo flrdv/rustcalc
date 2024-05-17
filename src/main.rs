@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::io;
-use std::io::BufRead;
-use std::ops::Deref;
+use std::io::{BufRead, Write};
 use crate::eval::Evaluator;
 use crate::lex::error::Error;
 use crate::parse::stream::Stream;
@@ -10,9 +9,35 @@ mod lex;
 mod parse;
 mod eval;
 
+fn exec(data: &str) -> Result<Vec<f64>, Error> {
+    let mut lexer = lex::Lexer::new(data);
+    let lexemes = lexer.lex()?;
+    let mut parser = parse::Parser::new(Stream::new(lexemes));
+    let mut eval = Evaluator::new()
+        .names(HashMap::from([
+            ("pi".to_string(), std::f64::consts::PI),
+        ]))
+        .functions(HashMap::from([
+            ("five".to_string(), Box::new(|| 5f64) as _),
+        ]));
+    let mut results = Vec::new();
+
+    for branch in parser.parse() {
+        results.push(eval.evaluate(&branch)?)
+    }
+
+    Ok(results)
+}
+
+fn print(text: &[u8]) {
+    let mut stdout = io::stdout();
+    stdout.write(text).expect("failed to read from stdout");
+    stdout.flush().unwrap();
+}
+
 fn repl() {
-    const PROMPT: &str = "> ";
-    print!("{}", PROMPT);
+    const PROMPT: &[u8] = "> ".as_bytes();
+    print(PROMPT);
 
     for line in io::stdin().lock().lines() {
         match exec(line.unwrap().as_str()) {
@@ -24,29 +49,10 @@ fn repl() {
             Err(err) => println!("error: {err}")
         };
 
-        print!("{}", PROMPT)
+        print(PROMPT)
     }
-}
-
-fn exec(data: &str) -> Result<Vec<f64>, Error> {
-    let mut lexer = lex::Lexer::new(data);
-    let lexemes = lexer.lex()?;
-    let mut parser = parse::Parser::new(Stream::new(lexemes));
-    let eval = Evaluator::new(HashMap::from([
-        ("pi".to_string(), std::f64::consts::PI),
-    ]));
-    let mut results = Vec::new();
-
-    for branch in parser.parse() {
-        results.push(eval.evaluate(&branch)?)
-    }
-
-    Ok(results)
 }
 
 fn main() {
-    for result in exec("pi").unwrap() {
-        println!("{result}")
-    }
-    // repl()
+    repl()
 }
