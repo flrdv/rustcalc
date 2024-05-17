@@ -2,7 +2,7 @@ pub mod error;
 mod radix;
 
 use error::Error;
-use crate::lex::Token::{LParen, Operator, RParen, Unknown};
+use crate::lex::Token::{Comma, Const, LParen, Operator, RParen, Unknown};
 
 pub struct Lexer<'a> {
     string: &'a str,
@@ -36,14 +36,39 @@ impl<'a> Lexer<'a> {
     }
 
     fn lexeme(&mut self) -> Result<Token, Error> {
+        self.whitespace();
+
         match self.string.chars().nth(0).unwrap() {
             '0'..='9' => self.int(),
             'a'..='z' | 'A'..='Z' | '_' => self.id(),
             '+' | '-' | '*' | '/' => self.op(),
             '(' => Ok(self.lparen()),
             ')' => Ok(self.rparen()),
+            ',' => Ok(self.comma()),
             _ => Ok(self.unknown())
         }
+    }
+
+    fn whitespace(&mut self) {
+        self.advance(self.end_of_whitespace());
+    }
+
+    fn end_of_whitespace(&self) -> usize {
+        for (i, ch) in self.string.chars().enumerate() {
+            match ch {
+                ' ' | '\n' | '\t' => (),
+                _ => {
+                    return i
+                }
+            }
+        }
+
+        self.string.len()
+    }
+
+    fn comma(&mut self) -> Token {
+        self.advance(1);
+        Comma
     }
 
     fn lparen(&mut self) -> Token {
@@ -58,12 +83,13 @@ impl<'a> Lexer<'a> {
 
     fn int(&mut self) -> Result<Token, Error> {
         for (i, ch) in self.string.chars().enumerate() {
-           if !(ch >= '0' && ch <= '9') {
-               return Ok(Token::Const(self.advance(i)))
-           }
+            match ch {
+                '0'..='9' | '.' => (),
+                _ => return Ok(Const(self.advance(i)))
+            }
         }
 
-        Ok(Token::Const(self.advance(self.string.len())))
+        Ok(Const(self.advance(self.string.len())))
     }
 
     fn id(&mut self) -> Result<Token, Error> {
@@ -121,17 +147,18 @@ impl<'a> Lexer<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Token {
     Unknown(String),
     Operator(Op),
     Const(String),
     ID(String),
     LParen,
-    RParen
+    RParen,
+    Comma
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Op {
     Add,
     Sub,
