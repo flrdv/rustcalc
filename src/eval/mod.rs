@@ -4,12 +4,26 @@ use crate::parse::ast::{Binary, Node, Unary};
 use crate::parse::ast::Node::{UnOp, BinOp};
 
 pub struct Evaluator {
-    vars: HashMap<String, f64>
+    vars: HashMap<String, f64>,
+    fns: HashMap<String, Box<dyn Fn() -> f64>>
 }
 
 impl Evaluator {
-    pub fn new(vars: HashMap<String, f64>) -> Self {
-        Self { vars }
+    pub fn new() -> Self {
+        Self {
+            vars: HashMap::new(),
+            fns: HashMap::new()
+        }
+    }
+
+    pub fn names(mut self, vars: HashMap<String, f64>) -> Self {
+        self.vars = vars;
+        self
+    }
+
+    pub fn functions(mut self, fns: HashMap<String, Box<dyn Fn() -> f64>>) -> Self {
+        self.fns = fns;
+        self
     }
 
     pub fn evaluate(&self, node: &Node) -> Result<f64, Error> {
@@ -30,7 +44,13 @@ impl Evaluator {
 
                 Err(Error::new("name not found".to_string()))
             },
-            Node::Call(_) => Ok(-1f64),
+            Node::Call(name) => {
+                if let Some(fun) = self.fns.get(name) {
+                    return Ok(fun())
+                }
+
+                Err(Error::new("function not found".to_string()))
+            },
         }
     }
 }
